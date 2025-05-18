@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #E53935;
+            --dark-gray: #2C2C2C;
+            --medium-gray: #9E9E9E;
+            --light-gray: #F5F5F5;
+            --white: #FFFFFF;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        .container {
+            display: flex;
+            flex: 1;
+            padding: 20px;
+            gap: 20px;
+        }
+        
+        @media (max-width: 1200px) {
+            .container {
+                flex-direction: column;
+            }
+        }
+        
+        .form-section {
+            flex: 1;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .preview-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .invoice-preview {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            min-height: 800px;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+        
+        button:hover {
+            background-color: #c62828;
+        }
+        
+        h2 {
+            margin-bottom: 20px;
+            color: var(--dark-gray);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: var(--dark-gray);
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        
+        .form-section h3 {
+            margin: 25px 0 15px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+            color: var(--dark-gray);
+        }
+        
+        .item-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .item-row input {
+            flex: 1;
+        }
+        
+        .item-row button {
+            background-color: #f44336;
+            padding: 5px 10px;
+        }
+        
+        .add-item-btn {
+            background-color: #4CAF50;
+            margin-bottom: 15px;
+        }
+        
+        .add-item-btn:hover {
+            background-color: #3e8e41;
+        }
+        
+        /* Invoice Preview Styles */
+        #invoicePreview {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            color: var(--dark-gray);
+        }
+        
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        
+        .company-info {
+            display: flex;
+            align-items: flex-start;
+        }
+        
+        .logo {
+            width: 40px;
+            height: 40px;
+            background-color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            overflow: hidden;
+        }
+        
+        .logo img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .logo-placeholder {
+            width: 100%;
+            height: 100%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        
+        .company-name {
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .company-name strong {
+            font-size: 14px;
+            display: block;
+        }
+        
+        .invoice-title {
+            text-align: right;
+        }
+        
+        .invoice-title h1 {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .invoice-title .invoice-id {
+            color: var(--medium-gray);
+            font-size: 12px;
+        }
+        
+        .invoice-details {
+            display: flex;
+            margin-bottom: 30px;
+        }
+        
+        .recipient {
+            flex: 1;
+        }
+        
+        .invoice-info {
+            flex: 1;
+            background-color: var(--light-gray);
+            padding: 10px;
+            border-left: 4px solid var(--primary-color);
+            display: flex;
+        }
+        
+        .info-label {
+            flex: 1;
+            font-weight: 500;
+        }
+        
+        .info-value {
+            flex: 1;
+            color: var(--medium-gray);
+        }
+        
+        .invoice-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        .invoice-table th {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: left;
+            padding: 10px;
+        }
+        
+        .invoice-table tr:nth-child(even) {
+            background-color: var(--light-gray);
+        }
+        
+        .invoice-table td {
+            padding: 10px;
+        }
+        
+        .invoice-table .item-description {
+            color: var(--medium-gray);
+            font-size: 12px;
+            margin-top: 3px;
+        }
+        
+        .payment-section {
+            display: flex;
+            margin-top: 20px;
+        }
+        
+        .payment-info {
+            flex: 1;
+        }
+        
+        .payment-info h4 {
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .payment-summary {
+            flex: 1;
+            text-align: right;
+        }
+        
+        .payment-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 5px;
+        }
+        
+        .payment-label {
+            width: 100px;
+            text-align: left;
+            font-weight: 500;
+        }
+        
+        .payment-value {
+            width: 100px;
+            text-align: right;
+        }
+        
+        .grand-total {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 8px 10px;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        
+        .invoice-footer {
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-top: 20px;
+        }
+        
+        .signature {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+        
+        .signature-img {
+            font-family: 'Brush Script MT', cursive;
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 5px;
+            height: 60px;
+            width: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        
+        .signature-img img {
+            max-height: 100%;
+            max-width: 100%;
+            object-fit: contain;
+        }
+        
+        .terms-container {
+            width: 100%;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+        
+        .thank-you {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .contact-info {
+            font-size: 12px;
+            color: var(--medium-gray);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-section">
+            <h2>Invoice Generator</h2>
+            <form id="invoiceForm">
+                <!-- Business Information -->
+                <h3>Business Information</h3>
+                <div class="form-group">
+                    <label for="businessName">Business Name</label>
+                    <input type="text" id="businessName" value="SEMPURNA, INC." required>
+                </div>
+                <div class="form-group">
+                    <label for="businessSubtitle">Business Subtitle</label>
+                    <input type="text" id="businessSubtitle" value="DESIGN STUDIO">
+                </div>
+                <div class="form-group">
+                    <label for="businessDate">Date</label>
+                    <input type="text" id="businessDate" value="10 January 2023">
+                </div>
+                <div class="form-group">
+                    <label for="logoFile">Logo Image</label>
+                    <input type="file" id="logoFile" accept="image/*">
+                    <div style="margin-top: 5px; font-size: 12px; color: #666;">
+                        Or use letter placeholder:
+                        <input type="text" id="logoLetter" maxlength="1" value="S" style="width: 40px; display: inline-block;">
+                    </div>
+                </div>
+                
+                <!-- Invoice Details -->
+                <h3>Invoice Details</h3>
+                <div class="form-group">
+                    <label for="invoiceNumber">Invoice Number</label>
+                    <input type="text" id="invoiceNumber" value="#123456789">
+                </div>
+                <div class="form-group">
+                    <label for="invoiceIdNumber">Invoice ID</label>
+                    <input type="text" id="invoiceIdNumber" value="VR/118/20/2018/D">
+                </div>
+                <div class="form-group">
+                    <label for="invoiceDate">Invoice Date</label>
+                    <input type="text" id="invoiceDate" value="02/08/2023">
+                </div>
+                
+                <!-- Client Information -->
+                <h3>Client Information</h3>
+                <div class="form-group">
+                    <label for="clientName">Client Name</label>
+                    <input type="text" id="clientName" value="Makelar, Inc.">
+                </div>
+                <div class="form-group">
+                    <label for="clientAddress">Client Address</label>
+                    <textarea id="clientAddress">270 5th Avenue, New Road
+Jakarta City</textarea>
+                </div>
+                
+                <!-- Invoice Items -->
+                <h3>Invoice Items</h3>
+                <div id="itemsContainer">
+                    <!-- Items will be added here dynamically -->
+                </div>
+                <button type="button" class="add-item-btn" id="addItemBtn">+ Add Item</button>
+                
+                <!-- Payment Information -->
+                <h3>Payment Information</h3>
+                <div class="form-group">
+                    <label for="taxRate">Tax Rate (%)</label>
+                    <input type="number" id="taxRate" value="15">
+                </div>
+                <div class="form-group">
+                    <label for="discountRate">Discount Rate (%)</label>
+                    <input type="number" id="discountRate" value="5">
+                </div>
+                <div class="form-group">
+                    <label for="paymentMethod">Payment Method</label>
+                    <textarea id="paymentMethod">Bank Account
+Bank Fulltone
+Bank ICBC</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="additionalNotes">Additional Notes</label>
+                    <textarea id="additionalNotes">Lorem ipsum dolor sit amet, sed diam nonummy nibh Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed diam nonummy.</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="termsCondition">Terms & Conditions</label>
+                    <textarea id="termsCondition">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed diam nonummy nibh Lorem ipsum dolor sit amet.</textarea>
+                </div>
+                
+                
+                <!-- Signature Information -->
+                <h3>Signature Information</h3>
+                <div class="form-group">
+                    <label for="signerName">Signer Name</label>
+                    <input type="text" id="signerName" value="Steven Joe">
+                </div>
+                <div class="form-group">
+                    <label for="signerTitle">Signer Title</label>
+                    <input type="text" id="signerTitle" value="Accounting Manager">
+                </div>
+                <div class="form-group">
+                    <label for="signatureFile">Signature Image</label>
+                    <input type="file" id="signatureFile" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label for="contactPhone">Contact Phone</label>
+                    <input type="text" id="contactPhone" value="01 2345 6789">
+                </div>
+                <div class="form-group">
+                    <label for="contactEmail">Contact Email</label>
+                    <input type="email" id="contactEmail" value="Makelar@gmail.com">
+                </div>
+            </form>
+        </div>
+        
+        <div class="preview-section">
+            <div class="actions">
+                <button id="downloadBtn">Download PDF</button>
+            </div>
+            <div class="invoice-preview" id="invoicePreviewContainer">
+                <div id="invoicePreview">
+                    <!-- Header -->
+                    <div class="invoice-header">
+                        <div class="company-info">
+                            <div class="logo" id="previewLogo">
+                                <div class="logo-placeholder" id="logoPlaceholder">S</div>
+                                <img id="logoImage" style="display: none;" src="" alt="Company Logo">
+                            </div>
+                            <div class="company-name">
+                                <strong id="previewBusinessName">SEMPURNA, INC.</strong>
+                                <div id="previewBusinessSubtitle">DESIGN STUDIO</div>
+                                <div id="previewBusinessDate">Sempurna Inc, 10 January 2023</div>
+                            </div>
+                        </div>
+                        <div class="invoice-title">
+                            <h1>INVOICE</h1>
+                            <div class="invoice-id" id="previewInvoiceNumber">#123456789</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Invoice Details -->
+                    <div class="invoice-details">
+                        <div class="recipient">
+                            <h4>INVOICE TO:</h4>
+                            <div id="previewClientName">Makelar, Inc.</div>
+                            <div id="previewClientAddress">270 5th Avenue, New Road<br>Jakarta City</div>
+                        </div>
+                        <div class="invoice-info">
+                            <div class="info-label">
+                                <div>Invoice Number</div>
+                                <div>Date Information</div>
+                            </div>
+                            <div class="info-value">
+                                <div id="previewInvoiceIdNumber">VR/118/20/2018/D</div>
+                                <div id="previewInvoiceDate">02/08/2023</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Invoice Table -->
+                    <table class="invoice-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 5%;">NO</th>
+                                <th style="width: 50%;">ITEM DESCRIPTION</th>
+                                <th style="width: 15%;">PRICE</th>
+                                <th style="width: 15%;">QTY</th>
+                                <th style="width: 15%;">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoiceItems">
+                            <!-- Items will be filled dynamically -->
+                        </tbody>
+                    </table>
+                    
+                    <!-- Payment Section -->
+                    <div class="payment-section">
+                        <div class="payment-info">
+                            <h4>Payment Method</h4>
+                            <div id="previewPaymentMethod">Bank Account<br>Bank Fulltone<br>Bank ICBC</div>
+                            <h4 style="margin-top: 15px;">Additional Notes</h4>
+                            <div id="previewAdditionalNotes" >Lorem ipsum dolor sit amet, sed diam nonummy nibh Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed diam nonummy.</div>
+                        </div>
+                        <div class="payment-summary">
+                            <div class="payment-row">
+                                <div class="payment-label">Sub Total:</div>
+                                <div class="payment-value" id="subtotal">$00.00</div>
+                            </div>
+                            <div class="payment-row">
+                                <div class="payment-label">Tax: (<span id="taxRateDisplay">15</span>%)</div>
+                                <div class="payment-value" id="taxAmount">$00.00</div>
+                            </div>
+                            <div class="payment-row">
+                                <div class="payment-label">Discount: (<span id="discountRateDisplay">5</span>%)</div>
+                                <div class="payment-value" id="discountAmount">$00.00</div>
+                            </div>
+                            <div class="grand-total">
+                                <div>Grand Total:</div>
+                                <div id="grandTotal">$00.00</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Signature Section -->
+                    <div class="signature">
+                        <div class="signature-img">
+                            <img id="signatureImagePreview" style="display: none;" src="" alt="Signature">
+                            <div id="signaturePlaceholder">Signature </div>
+                        </div>
+                        <div id="previewSignerName">Steven Joe</div>
+                        <div id="previewSignerTitle">Accounting Manager</div>
+                    </div>
+                    
+                    <!-- Terms & Conditions -->
+                    <div class="terms-container">
+                        <h4 style="margin-bottom: 10px;">Terms & Condition</h4>
+                        <div id="previewTermsCondition">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed diam nonummy nibh Lorem ipsum dolor sit amet.</div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div class="invoice-footer">
+                        <div></div> <!-- Empty div for spacing -->
+                        <div class="footer-right">
+                            <div class="thank-you">Thank you for your business!</div>
+                            <div class="contact-info">
+                                <span id="previewContactPhone">01 2345 6789</span> | 
+                                <span id="previewContactEmail">Makelar@gmail.com</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get references to form elements
+            const form = document.getElementById('invoiceForm');
+            const itemsContainer = document.getElementById('itemsContainer');
+            const addItemBtn = document.getElementById('addItemBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            
+            // Default items
+            const defaultItems = [
+                { name: 'Branding Design', description: 'Lorem ipsum dolor sit amet consectetur', price: 90.00, quantity: 1 },
+                { name: 'Logo Design', description: 'Lorem ipsum dolor sit amet consectetur', price: 85.00, quantity: 1 },
+                { name: '2 Side Name Card', description: 'Lorem ipsum dolor sit amet consectetur', price: 45.00, quantity: 1 },
+                { name: 'Corporate Identity', description: 'Lorem ipsum dolor sit amet consectetur', price: 75.00, quantity: 1 },
+                { name: 'Keynote Design', description: 'Lorem ipsum dolor sit amet consectetur', price: 65.00, quantity: 1 }
+            ];
+            
+            // Add default items
+            defaultItems.forEach((item, index) => {
+                addItemRow(item, index + 1);
+            });
+            
+            // Bind events
+            addItemBtn.addEventListener('click', function() {
+                const nextItemNumber = document.querySelectorAll('.item-row').length + 1;
+                addItemRow({ name: '', description: '', price: 0, quantity: 1 }, nextItemNumber);
+            });
+            
+            // Bind download button
+            downloadBtn.addEventListener('click', generatePDF);
+            
+            // Bind all form inputs to update preview
+            const formInputs = form.querySelectorAll('input, textarea');
+            formInputs.forEach(input => {
+                if (input.type !== 'file') {
+                    input.addEventListener('input', updatePreview);
+                    
+                    // Initial update
+                    if (input.id) {
+                        updateSpecificField(input.id, input.value);
+                    }
+                }
+            });
+            
+            // Handle file uploads
+            const logoFileInput = document.getElementById('logoFile');
+            const signatureFileInput = document.getElementById('signatureFile');
+            
+            logoFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        document.getElementById('logoImage').src = event.target.result;
+                        document.getElementById('logoImage').style.display = 'block';
+                        document.getElementById('logoPlaceholder').style.display = 'none';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            signatureFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        document.getElementById('signatureImagePreview').src = event.target.result;
+                        document.getElementById('signatureImagePreview').style.display = 'block';
+                        document.getElementById('signaturePlaceholder').style.display = 'none';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Initial calculations
+            calculateTotals();
+            
+            // Function to add a new item row
+            function addItemRow(item, itemNumber) {
+                // Create form row
+                const itemRow = document.createElement('div');
+                itemRow.className = 'item-row';
+                itemRow.innerHTML = `
+                    <input type="text" class="item-name" placeholder="Item name" value="${item.name || ''}">
+                    <input type="text" class="item-description" placeholder="Description" value="${item.description || ''}">
+                    <input type="number" class="item-price" placeholder="Price" value="${item.price || 0}" min="0" step="0.01">
+                    <input type="number" class="item-quantity" placeholder="Qty" value="${item.quantity || 1}" min="1" step="1">
+                    <button type="button" class="remove-item">×</button>
+                `;
+                
+                itemsContainer.appendChild(itemRow);
+                
+                // Bind events to new inputs
+                const newInputs = itemRow.querySelectorAll('input');
+                newInputs.forEach(input => {
+                    input.addEventListener('input', updateInvoiceItems);
+                });
+                
+                // Bind remove button
+                const removeBtn = itemRow.querySelector('.remove-item');
+                removeBtn.addEventListener('click', function() {
+                    itemRow.remove();
+                    updateInvoiceItems();
+                });
+                
+                // Update the invoice items immediately
+                updateInvoiceItems();
+            }
+            
+            // Function to update all preview elements based on form inputs
+            function updatePreview() {
+                // Business Information
+                updateSpecificField('businessName', document.getElementById('businessName').value);
+                updateSpecificField('businessSubtitle', document.getElementById('businessSubtitle').value);
+                updateSpecificField('businessDate', document.getElementById('businessDate').value);
+                updateSpecificField('logoLetter', document.getElementById('logoLetter').value);
+                
+                // Invoice Details
+                updateSpecificField('invoiceNumber', document.getElementById('invoiceNumber').value);
+                updateSpecificField('invoiceIdNumber', document.getElementById('invoiceIdNumber').value);
+                updateSpecificField('invoiceDate', document.getElementById('invoiceDate').value);
+                
+                // Client Information
+                updateSpecificField('clientName', document.getElementById('clientName').value);
+                updateSpecificField('clientAddress', document.getElementById('clientAddress').value);
+                
+                // Payment Information
+                updateSpecificField('taxRate', document.getElementById('taxRate').value);
+                updateSpecificField('discountRate', document.getElementById('discountRate').value);
+                updateSpecificField('paymentMethod', document.getElementById('paymentMethod').value);
+                updateSpecificField('termsCondition', document.getElementById('termsCondition').value);
+                updateSpecificField('additionalNotes', document.getElementById('additionalNotes').value);
+                
+                // Signature Information
+                updateSpecificField('signerName', document.getElementById('signerName').value);
+                updateSpecificField('signerTitle', document.getElementById('signerTitle').value);
+                updateSpecificField('contactPhone', document.getElementById('contactPhone').value);
+                updateSpecificField('contactEmail', document.getElementById('contactEmail').value);
+                
+                // Update invoice items
+                updateInvoiceItems();
+            }
+            
+            // Function to update specific fields in the preview
+            function updateSpecificField(fieldId, value) {
+                switch (fieldId) {
+                    case 'businessName':
+                        document.getElementById('previewBusinessName').textContent = value;
+                        break;
+                    case 'businessSubtitle':
+                        document.getElementById('previewBusinessSubtitle').textContent = value;
+                        break;
+                    case 'businessDate':
+                        document.getElementById('previewBusinessDate').textContent = `Sempurna Inc, ${value}`;
+                        break;
+                    case 'logoLetter':
+                        document.getElementById('logoPlaceholder').textContent = value.substring(0, 1).toUpperCase();
+                        break;
+                    case 'invoiceNumber':
+                        document.getElementById('previewInvoiceNumber').textContent = value;
+                        break;
+                    case 'invoiceIdNumber':
+                        document.getElementById('previewInvoiceIdNumber').textContent = value;
+                        break;
+                    case 'invoiceDate':
+                        document.getElementById('previewInvoiceDate').textContent = value;
+                        break;
+                    case 'clientName':
+                        document.getElementById('previewClientName').textContent = value;
+                        break;
+                    case 'clientAddress':
+                        document.getElementById('previewClientAddress').innerHTML = value.replace(/\n/g, '<br>');
+                        break;
+                    case 'taxRate':
+                        document.getElementById('taxRateDisplay').textContent = value;
+                        calculateTotals();
+                        break;
+                    case 'discountRate':
+                        document.getElementById('discountRateDisplay').textContent = value;
+                        calculateTotals();
+                        break;
+                    case 'paymentMethod':
+                        document.getElementById('previewPaymentMethod').innerHTML = value.replace(/\n/g, '<br>');
+                        break;
+                    case 'termsCondition':
+                        document.getElementById('previewTermsCondition').textContent = value;
+                        break;
+                    case 'additionalNotes':
+                        document.getElementById('previewAdditionalNotes').textContent = value;
+                        break;
+                    case 'signerName':
+                        document.getElementById('previewSignerName').textContent = value;
+                        break;
+                    case 'signerTitle':
+                        document.getElementById('previewSignerTitle').textContent = value;
+                        break;
+                    case 'contactPhone':
+                        document.getElementById('previewContactPhone').textContent = value;
+                        break;
+                    case 'contactEmail':
+                        document.getElementById('previewContactEmail').textContent = value;
+                        break;
+                }
+            }
+            
+            // Function to update invoice items in the preview
+            function updateInvoiceItems() {
+                const invoiceItems = document.getElementById('invoiceItems');
+                invoiceItems.innerHTML = '';
+                
+                const itemRows = itemsContainer.querySelectorAll('.item-row');
+                itemRows.forEach((row, index) => {
+                    const itemName = row.querySelector('.item-name').value;
+                    const itemDescription = row.querySelector('.item-description').value;
+                    const itemPrice = parseFloat(row.querySelector('.item-price').value) || 0;
+                    const itemQuantity = parseInt(row.querySelector('.item-quantity').value) || 0;
+                    const itemTotal = itemPrice * itemQuantity;
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>0${index + 1}.</td>
+                        <td>
+                            ${itemName}
+                            <div class="item-description">${itemDescription}</div>
+                        </td>
+                        <td>$${itemPrice.toFixed(2)}</td>
+                        <td>QTY: ${itemQuantity}</td>
+                        <td>$${itemTotal.toFixed(2)}</td>
+                    `;
+                    
+                    invoiceItems.appendChild(tr);
+                });
+                
+                calculateTotals();
+            }
+            
+            // Function to calculate totals
+            function calculateTotals() {
+                let subtotal = 0;
+                const itemRows = itemsContainer.querySelectorAll('.item-row');
+                
+                itemRows.forEach(row => {
+                    const itemPrice = parseFloat(row.querySelector('.item-price').value) || 0;
+                    const itemQuantity = parseInt(row.querySelector('.item-quantity').value) || 0;
+                    subtotal += itemPrice * itemQuantity;
+                });
+                
+                const taxRate = parseFloat(document.getElementById('taxRate').value) || 0;
+                const discountRate = parseFloat(document.getElementById('discountRate').value) || 0;
+                
+                const taxAmount = subtotal * (taxRate / 100);
+                const discountAmount = subtotal * (discountRate / 100);
+                const grandTotal = subtotal + taxAmount - discountAmount;
+                
+                // Update display
+                document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
+                document.getElementById('taxAmount').textContent = `$${taxAmount.toFixed(2)}`;
+                document.getElementById('discountAmount').textContent = `$${discountAmount.toFixed(2)}`;
+                document.getElementById('grandTotal').textContent = `$${grandTotal.toFixed(2)}`;
+            }
+            
+            // Function to generate PDF
+            function generatePDF() {
+                const { jsPDF } = window.jspdf;
+                
+                // Get the invoice element
+                const element = document.getElementById('invoicePreview');
+                
+                // Create a spinner or loading message
+                const loadingMessage = document.createElement('div');
+                loadingMessage.textContent = 'Generating PDF...';
+                loadingMessage.style.position = 'fixed';
+                loadingMessage.style.top = '50%';
+                loadingMessage.style.left = '50%';
+                loadingMessage.style.transform = 'translate(-50%, -50%)';
+                loadingMessage.style.backgroundColor = 'rgba(0,0,0,0.7)';
+                loadingMessage.style.color = 'white';
+                loadingMessage.style.padding = '20px';
+                loadingMessage.style.borderRadius = '5px';
+                loadingMessage.style.zIndex = '9999';
+                document.body.appendChild(loadingMessage);
+                
+                // Use html2canvas to capture the invoice as an image
+                html2canvas(element, {
+                    scale: 2,
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: true
+                }).then(canvas => {
+                    // Remove the loading message
+                    document.body.removeChild(loadingMessage);
+                    
+                    // Get business name for filename
+                    const businessName = document.getElementById('businessName').value.replace(/\s+/g, '_');
+                    const invoiceNum = document.getElementById('invoiceNumber').value.replace(/[#\s]/g, '');
+                    const filename = `${businessName}_Invoice_${invoiceNum}.pdf`;
+                    
+                    // Create PDF with proper dimensions
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm',
+                        format: 'a4'
+                    });
+                    
+                    // Calculate dimensions to maintain aspect ratio
+                    const imgWidth = 210; // A4 width in mm
+                    const imgHeight = canvas.height * imgWidth / canvas.width;
+                    
+                    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                    pdf.save(filename);
+                }).catch(err => {
+                    console.error('Error generating PDF:', err);
+                    document.body.removeChild(loadingMessage);
+                    alert('Error generating PDF. Please try again.');
+                });
+            }
+        });
+    </script>
+</body>
+</html>
