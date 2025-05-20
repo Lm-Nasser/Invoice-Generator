@@ -112,7 +112,7 @@
         
         textarea {
             resize: vertical;
-            min-height: 60px;
+            min-height: 90px;
         }
         
         .form-section h3 {
@@ -168,7 +168,7 @@
         .logo {
             width: 40px;
             height: 40px;
-            background-color: var(--primary-color);
+            /* background-color: var(--primary-color);*/
             display: flex;
             align-items: center;
             justify-content: center;
@@ -185,7 +185,7 @@
         .logo-placeholder {
             width: 100%;
             height: 100%;
-            color: white;
+            color: black;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -908,13 +908,40 @@ Bank ICBC</textarea>
                         format: 'a4'
                     });
                     
-                    // Calculate dimensions to maintain aspect ratio
-                    const imgWidth = 210; // A4 width in mm
-                    const imgHeight = canvas.height * imgWidth / canvas.width;
-                    
-                    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-                    pdf.save(filename);
-                }).catch(err => {
+                    // Get the A4 page dimensions in mm
+                  const pageWidth = pdf.internal.pageSize.getWidth();
+                  const pageHeight = pdf.internal.pageSize.getHeight();
+
+                  // Get the image dimensions while maintaining aspect ratio
+                  const imgProps = {
+                    width: canvas.width,
+                    height: canvas.height
+                  };
+                  const ratio = imgProps.width / imgProps.height;
+
+                  // Define a max width/height with slightly smaller margins (12mm each side)
+                  const margin = 5;
+                  const maxWidth = pageWidth - margin * 2;
+                  const maxHeight = pageHeight - margin * 2;
+
+                  let imgWidth = maxWidth;
+                  let imgHeight = maxWidth / ratio;
+
+                  // If image is too tall, scale based on height instead
+                  if (imgHeight > maxHeight) {
+                    imgHeight = maxHeight;
+                    imgWidth = maxHeight * ratio;
+                  }
+
+                  // Calculate position to center the image
+                  const x = (pageWidth - imgWidth) / 2;
+                  const y = (pageHeight - imgHeight) / 2;
+
+                  // Add image with calculated position and size
+                  pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+                  pdf.save(filename);
+
+                    }).catch(err => {
                     console.error('Error generating PDF:', err);
                     document.body.removeChild(loadingMessage);
                     alert('Error generating PDF. Please try again.');
